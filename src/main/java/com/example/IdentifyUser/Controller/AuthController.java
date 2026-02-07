@@ -3,14 +3,20 @@ package com.example.IdentifyUser.Controller;
 import com.example.IdentifyUser.Service.AuthService;
 import com.example.IdentifyUser.dto.reponse.ApiResponse;
 import com.example.IdentifyUser.dto.reponse.AuthenticationResponse;
+import com.example.IdentifyUser.dto.reponse.IntrospectResponse;
 import com.example.IdentifyUser.dto.request.AuthenticationRequest;
+import com.example.IdentifyUser.dto.request.IntrospectRequest;
+import com.nimbusds.jose.JOSEException;
 import lombok.AccessLevel;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.text.ParseException;
 
 @RestController
 @RequestMapping("/auth")
@@ -20,10 +26,19 @@ public class AuthController {
     AuthService authService;
 
     @PostMapping("/login")
-    ApiResponse<AuthenticationResponse> autherticate(@RequestBody AuthenticationRequest req){
-        boolean result = authService.authenticate(req);
+    ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest req){
+        AuthenticationResponse result = authService.authenticate(req);
         ApiResponse<AuthenticationResponse> response = new ApiResponse<>();
-        response.setData(new AuthenticationResponse(result));
+        response.setData(result);
+        return response;
+    }
+
+    @PostMapping("/introspect")
+    ApiResponse<IntrospectResponse> introspectRequestApiResponse(@RequestBody @NonNull IntrospectRequest req)
+            throws ParseException, JOSEException {
+        IntrospectResponse result = authService.introspectResponse(req);
+        ApiResponse<IntrospectResponse> response = new ApiResponse<>();
+        response.setData(result);
         return response;
     }
 }

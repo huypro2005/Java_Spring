@@ -48,7 +48,6 @@ public class UserController {
         ApiResponse<UserResponse> response = new ApiResponse<>();
         response.setData(userService.updateUser(id, req));
         return response;
-//        return userService.updateUser(id, req);
     }
 
     @DeleteMapping("{id}")

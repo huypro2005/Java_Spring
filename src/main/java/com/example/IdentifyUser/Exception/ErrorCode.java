@@ -6,6 +6,10 @@ public enum ErrorCode {
     USER_EXISTS(1001, "Username already exists."),
     USERNAME_INVALID(1002, "Username must be at least 3 characters"),
     PASSWORD_INVALID(1004, "Password must be at least 8 characters"),
+    UNAUTHENTICATED_ACCESS(2001, "Unauthenticated access."),
+    TOKEN_EXPIRED(2002, "Token has expired."),
+    TOKEN_INVALID(2003, "Token is invalid."),
+    TOKEN_GENERATION_FAILED(2004, "Token generation failed."),
     INVALID_KEY(4444, "Error key");
 
     private final String message;
