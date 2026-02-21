@@ -31,7 +31,6 @@ public class ApplicationInitConfig {
                 var roles = new HashSet<String>();
                 roles.add(Role.ADMIN.name());
 
-
                 User user = User.builder()
                         .username("admin")
                         .password(passwordEncoder.encode("admin"))

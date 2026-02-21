@@ -1,5 +1,6 @@
 package com.example.IdentifyUser.Controller;
 
+import com.example.IdentifyUser.Entity.User;
 import com.example.IdentifyUser.Service.UserService;
 import com.example.IdentifyUser.dto.reponse.UserResponse;
 import com.example.IdentifyUser.dto.reponse.ApiResponse;
@@ -75,5 +76,34 @@ public class UserController {
         return ApiResponse.<String>builder()
                 .data("User deleted successfully")
                 .build();
+    }
+
+    @PostMapping("/add-role")
+    ApiResponse<String> addRoleToUser(){
+        try {
+            userService.addRoleToUsers();
+            return ApiResponse.<String>builder()
+                    .data("Roles added successfully")
+                    .build();
+        } catch (Exception e) {
+            log.error("Error adding roles to users", e);
+            return ApiResponse.<String>builder()
+                    .data("Failed to add roles to users")
+                    .build();
+        }
+    }
+
+    @GetMapping("/my-info")
+    ApiResponse<UserResponse> getMyInfo() {
+        try {
+            return ApiResponse.<UserResponse>builder()
+                    .data(userService.getMyInfo())
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting user info", e);
+            return ApiResponse.<UserResponse>builder()
+                    .data(null)
+                    .build();
+        }
     }
 }

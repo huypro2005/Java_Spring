@@ -13,15 +13,21 @@ import com.example.IdentifyUser.enums.Role;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PostMapping;
 
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -52,14 +58,19 @@ public class UserService {
         return userMapper.to_user_response(userRepository.save(user));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getAllUsers(){
+        log.info("Method getAllUsers called");
         return userMapper.to_list_users_response(userRepository.findAll());
     }
 
+
     public User getUser(String id){
+        log.info("Method getUser called with id: {}", id);
         return userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
+    @PostAuthorize("hasRole('ADMIN') or returnObject.username == authentication.name")
     public UserResponse getUserResponse(String id){
         User user = getUser(id);
         return userMapper.to_user_response(user);
@@ -68,5 +79,34 @@ public class UserService {
     public void deleteUser(String id){
         User user = getUser(id);
         userRepository.delete(user);
+    }
+
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public void addRoleToUsers(){
+        List<User> users = userRepository.findAll();
+        for (User user: users){
+            if (user.getRoles() == null){
+                HashSet<String> roles = new HashSet<>();
+                roles.add(Role.USER.name());
+                user.setRoles(roles);
+                userRepository.save(user);
+            }
+        }
+    }
+
+//    @PostMapping("returnObject.username == authentication.name")
+    public UserResponse getMyInfo(){
+        try{
+            var authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            return userMapper.to_user_response(user);
+        }
+        catch (Exception e){
+            log.error("Error getting user info", e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 }
