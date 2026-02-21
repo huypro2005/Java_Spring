@@ -9,6 +9,7 @@ import com.example.IdentifyUser.Repository.UserRepository;
 import com.example.IdentifyUser.dto.reponse.UserResponse;
 import com.example.IdentifyUser.dto.request.UserCreationRequest;
 import com.example.IdentifyUser.dto.request.UserUpdateRequest;
+import com.example.IdentifyUser.enums.Role;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -26,14 +28,21 @@ import java.util.List;
 public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
+    PasswordEncoder passwordEncoder;
 
     public UserResponse createUser(UserCreationRequest req){
         if (userRepository.existsByUsername(req.getUsername())){
             throw new AppException(ErrorCode.USER_EXISTS);
         }
+
         User user = userMapper.to_user(req);
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
+//        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
+
+        HashSet<String> roles = new HashSet<>();
+        roles.add(Role.USER.name());
+        user.setRoles(roles);
+
         return userMapper.to_user_response(userRepository.save(user));
     }
 
