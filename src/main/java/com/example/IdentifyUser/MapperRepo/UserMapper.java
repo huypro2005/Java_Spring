@@ -14,9 +14,9 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface UserMapper {
     User to_user(UserCreationRequest req);
-//    @Mapping(target = "password",ignore = true)
+
     UserResponse to_user_response(User user);
+
+    @Mapping(target = "roles", ignore = true)
     void updateUser(@MappingTarget User user, UserUpdateRequest req);
-    @Mapping(target = "password", ignore = true)
-    List<UserResponse> to_list_users_response(List<User> users);
 }

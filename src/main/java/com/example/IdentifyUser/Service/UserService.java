@@ -5,6 +5,7 @@ import com.example.IdentifyUser.Entity.User;
 import com.example.IdentifyUser.Exception.AppException;
 import com.example.IdentifyUser.Exception.ErrorCode;
 import com.example.IdentifyUser.MapperRepo.UserMapper;
+import com.example.IdentifyUser.Repository.RoleRepository;
 import com.example.IdentifyUser.Repository.UserRepository;
 import com.example.IdentifyUser.dto.reponse.UserResponse;
 import com.example.IdentifyUser.dto.request.UserCreationRequest;
@@ -31,6 +32,7 @@ public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
+    RoleRepository roleRepository;
 
     public UserResponse createUser(UserCreationRequest req){
         if (userRepository.existsByUsername(req.getUsername())){
@@ -41,23 +43,28 @@ public class UserService {
 //        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
 
-        HashSet<String> roles = new HashSet<>();
-        roles.add(Role.USER.name());
-//        user.setRoles(roles);
+//        var roles = roleRepository.findAllById(req.getRoles());
+//        user.setRoles(new HashSet<>(roles));
 
         return userMapper.to_user_response(userRepository.save(user));
     }
 
     public UserResponse updateUser(String id, UserUpdateRequest req){
         User user = getUser(id);
+
         userMapper.updateUser(user, req);
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+
+        var roles = roleRepository.findAllById(req.getRoles());
+        user.setRoles(new HashSet<>(roles));
+
         return userMapper.to_user_response(userRepository.save(user));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('API_GET_ALL_USERS')")
     public List<UserResponse> getAllUsers(){
-        log.info("Method getAllUsers called");
-        return userMapper.to_list_users_response(userRepository.findAll());
+        var users = userRepository.findAll();
+        return users.stream().map(userMapper::to_user_response).toList();
     }
 
 
