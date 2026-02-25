@@ -14,16 +14,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PostMapping;
 
-import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 
@@ -47,7 +43,7 @@ public class UserService {
 
         HashSet<String> roles = new HashSet<>();
         roles.add(Role.USER.name());
-        user.setRoles(roles);
+//        user.setRoles(roles);
 
         return userMapper.to_user_response(userRepository.save(user));
     }
@@ -89,7 +85,7 @@ public class UserService {
             if (user.getRoles() == null){
                 HashSet<String> roles = new HashSet<>();
                 roles.add(Role.USER.name());
-                user.setRoles(roles);
+//                user.setRoles(roles);
                 userRepository.save(user);
             }
         }
