@@ -40,7 +40,6 @@ public class UserService {
         }
 
         User user = userMapper.to_user(req);
-//        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setPassword(passwordEncoder.encode(req.getPassword()));
 
 //        var roles = roleRepository.findAllById(req.getRoles());

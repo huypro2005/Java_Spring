@@ -1,9 +1,11 @@
 package com.example.IdentifyUser.dto.request;
 
+import com.example.IdentifyUser.Validator.DobConstraint;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDate;
 import java.util.List;
 
 
@@ -21,5 +23,6 @@ public class UserCreationRequest {
     String password;
     String lastName;
     String firstName;
-    String dob;
+    @DobConstraint(min = 16, message = "DOB_INVALID")
+    LocalDate dob;
 }
