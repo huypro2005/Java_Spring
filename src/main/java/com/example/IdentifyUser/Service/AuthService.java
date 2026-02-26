@@ -11,6 +11,7 @@ import com.example.IdentifyUser.dto.reponse.IntrospectResponse;
 import com.example.IdentifyUser.dto.request.AuthenticationRequest;
 import com.example.IdentifyUser.dto.request.IntrospectRequest;
 import com.example.IdentifyUser.dto.request.LogoutRequest;
+import com.example.IdentifyUser.dto.request.RefreshRequest;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -61,6 +62,16 @@ public class AuthService {
                 .build();
     }
     private String generateToken(User user){
+        /*
+        * Generate a JWT token with the following claims:
+        * - sub: the user's username
+        * - iss: the issuer of the token (e.g., your application name)
+        * - iat: the time the token was issued
+        * - exp: the expiration time of the token (e.g., 1 hour from the time of issuance)
+        * - jti: a unique identifier for the token (e.g., a UUID)
+        * - scope: a space-separated string of the user's roles and permissions
+        * */
+
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(user.getUsername())
@@ -87,6 +98,9 @@ public class AuthService {
 
     public IntrospectResponse introspectResponse(IntrospectRequest req)
             throws JOSEException, ParseException {
+        /*
+        * Check the token's validity by verifying its signature and expiration time.
+        * */
         String token = req.getToken();
         boolean invalid = true;
 
@@ -118,8 +132,37 @@ public class AuthService {
         invalidateTokenRepository.save(invalidateToken);
     }
 
+    public AuthenticationResponse refreshToken(RefreshRequest req) throws ParseException, JOSEException {
+        // Implement token refresh logic here
+        // This typically involves verifying the existing token, checking its validity, and issuing a new token if valid
+        var signToken = verifyToken(req.getToken());
+
+        String jti = signToken.getJWTClaimsSet().getJWTID();
+        Date expirationTime = signToken.getJWTClaimsSet().getExpirationTime();
+
+        InvalidateToken invalidateToken = InvalidateToken.builder()
+                .jti(jti)
+                .expirationTime(expirationTime)
+                .build();
+
+        invalidateTokenRepository.save(invalidateToken);
+
+        String username = signToken.getJWTClaimsSet().getSubject();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        var token = generateToken(user);
+        return AuthenticationResponse.builder()
+                .isAuthenticated(true)
+                .token(token)
+                .build();
+    }
+
     private SignedJWT verifyToken(String token)
             throws JOSEException, ParseException{
+        /*
+        * Check the token's signature and expiration time.
+        * If the token is invalid or expired, throw an exception.
+        * */
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
         SignedJWT signedJWT = SignedJWT.parse(token);
         Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
@@ -136,6 +179,9 @@ public class AuthService {
     }
 
     private String BuildScope(User user) {
+        /*
+        * Build the scope string based on the user's roles and permissions.
+        * */
         StringJoiner stringJoiner = new StringJoiner(" ");
 
         if (!CollectionUtils.isEmpty(user.getRoles()))

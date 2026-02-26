@@ -33,7 +33,8 @@ public class SecurityConfig {
         "/users",
         "/auth/login",
         "/auth/introspect",
-            "/auth/logout"
+        "/auth/logout",
+        "/auth/refresh"
     };
 
     private final String[] ADMIN_ONLY_ENDPOINT = {
