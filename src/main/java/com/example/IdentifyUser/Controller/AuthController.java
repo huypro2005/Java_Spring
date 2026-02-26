@@ -6,6 +6,7 @@ import com.example.IdentifyUser.dto.reponse.AuthenticationResponse;
 import com.example.IdentifyUser.dto.reponse.IntrospectResponse;
 import com.example.IdentifyUser.dto.request.AuthenticationRequest;
 import com.example.IdentifyUser.dto.request.IntrospectRequest;
+import com.example.IdentifyUser.dto.request.LogoutRequest;
 import com.nimbusds.jose.JOSEException;
 import lombok.AccessLevel;
 import lombok.NonNull;
@@ -43,6 +44,15 @@ public class AuthController {
 //        response.setData(result);
         return ApiResponse.<IntrospectResponse>builder()
                 .data(authService.introspectResponse(req))
+                .build();
+    }
+
+    @PostMapping("/logout")
+    ApiResponse<String> logout(@RequestBody @NonNull LogoutRequest req)
+            throws ParseException, JOSEException {
+        authService.Logout(req);
+        return ApiResponse.<String>builder()
+                .data("Logout successful")
                 .build();
     }
 }

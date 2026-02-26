@@ -1,13 +1,16 @@
 package com.example.IdentifyUser.Service;
 
+import com.example.IdentifyUser.Entity.InvalidateToken;
 import com.example.IdentifyUser.Entity.User;
 import com.example.IdentifyUser.Exception.AppException;
 import com.example.IdentifyUser.Exception.ErrorCode;
+import com.example.IdentifyUser.Repository.InvalidateTokenRepository;
 import com.example.IdentifyUser.Repository.UserRepository;
 import com.example.IdentifyUser.dto.reponse.AuthenticationResponse;
 import com.example.IdentifyUser.dto.reponse.IntrospectResponse;
 import com.example.IdentifyUser.dto.request.AuthenticationRequest;
 import com.example.IdentifyUser.dto.request.IntrospectRequest;
+import com.example.IdentifyUser.dto.request.LogoutRequest;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
@@ -20,6 +23,7 @@ import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.AbstractPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -30,6 +34,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -37,6 +42,7 @@ import java.util.StringJoiner;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthService {
     UserRepository userRepository;
+    InvalidateTokenRepository invalidateTokenRepository;
     PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -63,6 +69,7 @@ public class AuthService {
                 .expirationTime(new Date(
                         Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
                 ))
+                .jwtID(UUID.randomUUID().toString())
                 .claim("scope", BuildScope(user))
                 .build();
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -81,13 +88,51 @@ public class AuthService {
     public IntrospectResponse introspectResponse(IntrospectRequest req)
             throws JOSEException, ParseException {
         String token = req.getToken();
+        boolean invalid = true;
+
+        try {
+            verifyToken(token);
+
+        } catch (AppException e){
+            invalid = false;
+        }
+        return IntrospectResponse.builder()
+                .isActive(invalid)
+                .build();
+    }
+
+    public void Logout(LogoutRequest req) throws ParseException, JOSEException {
+        // Invalidate the token by adding it to a blacklist or removing it from the database
+        // This is a simple implementation and may not be suitable for production use
+        // You can use a cache or database to store blacklisted tokens and check against it in the verifyToken method
+        var signToken = verifyToken(req.getToken());
+
+        String jti = signToken.getJWTClaimsSet().getJWTID();
+        Date expirationTime = signToken.getJWTClaimsSet().getExpirationTime();
+
+        InvalidateToken invalidateToken = InvalidateToken.builder()
+                .jti(jti)
+                .expirationTime(expirationTime)
+                .build();
+
+        invalidateTokenRepository.save(invalidateToken);
+    }
+
+    private SignedJWT verifyToken(String token)
+            throws JOSEException, ParseException{
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
         SignedJWT signedJWT = SignedJWT.parse(token);
-        var verified = signedJWT.verify(verifier);
         Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        return  IntrospectResponse.builder()
-                .isActive(verified && expirationTime.after(new Date()))
-                .build();
+        if (!(signedJWT.verify(verifier) && expirationTime.after(new Date()))){
+            throw new AppException(ErrorCode.UNAUTHENTICATED_ACCESS);
+        }
+
+        String jti = signedJWT.getJWTClaimsSet().getJWTID();
+        if (invalidateTokenRepository.existsById(jti)){
+            throw new AppException(ErrorCode.UNAUTHENTICATED_ACCESS);
+        }
+
+        return  signedJWT;
     }
 
     private String BuildScope(User user) {
