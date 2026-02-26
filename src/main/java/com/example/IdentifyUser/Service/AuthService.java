@@ -49,6 +49,14 @@ public class AuthService {
     @Value("${jwt.signerKey}")
     protected String SIGNER_KEY;
 
+    @NonFinal
+    @Value("${jwt.jwt-duration}")
+    protected int JWT_DURATION;
+
+    @NonFinal
+    @Value("${jwt.refresh-duration}")
+    protected int REFRESH_DURATION;
+
     public AuthenticationResponse authenticate(AuthenticationRequest req){
         User user = userRepository.findByUsername(req.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -78,7 +86,7 @@ public class AuthService {
                 .issuer("huypro37")
                 .issueTime(new Date())
                 .expirationTime(new Date(
-                        Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
+                        Instant.now().plus(JWT_DURATION, ChronoUnit.SECONDS).toEpochMilli()
                 ))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", BuildScope(user))
@@ -105,7 +113,7 @@ public class AuthService {
         boolean invalid = true;
 
         try {
-            verifyToken(token);
+            verifyToken(token, false);
 
         } catch (AppException e){
             invalid = false;
@@ -119,23 +127,28 @@ public class AuthService {
         // Invalidate the token by adding it to a blacklist or removing it from the database
         // This is a simple implementation and may not be suitable for production use
         // You can use a cache or database to store blacklisted tokens and check against it in the verifyToken method
-        var signToken = verifyToken(req.getToken());
+        try {
+            var signToken = verifyToken(req.getToken(), true);
 
-        String jti = signToken.getJWTClaimsSet().getJWTID();
-        Date expirationTime = signToken.getJWTClaimsSet().getExpirationTime();
+            String jti = signToken.getJWTClaimsSet().getJWTID();
+            Date expirationTime = signToken.getJWTClaimsSet().getExpirationTime();
 
-        InvalidateToken invalidateToken = InvalidateToken.builder()
-                .jti(jti)
-                .expirationTime(expirationTime)
-                .build();
+            InvalidateToken invalidateToken = InvalidateToken.builder()
+                    .jti(jti)
+                    .expirationTime(expirationTime)
+                    .build();
 
-        invalidateTokenRepository.save(invalidateToken);
+            invalidateTokenRepository.save(invalidateToken);
+        } catch (AppException e){
+            log.info("Token already invalid");
+        }
+
     }
 
     public AuthenticationResponse refreshToken(RefreshRequest req) throws ParseException, JOSEException {
         // Implement token refresh logic here
         // This typically involves verifying the existing token, checking its validity, and issuing a new token if valid
-        var signToken = verifyToken(req.getToken());
+        var signToken = verifyToken(req.getToken(), true);
 
         String jti = signToken.getJWTClaimsSet().getJWTID();
         Date expirationTime = signToken.getJWTClaimsSet().getExpirationTime();
@@ -157,7 +170,7 @@ public class AuthService {
                 .build();
     }
 
-    private SignedJWT verifyToken(String token)
+    private SignedJWT verifyToken(String token, boolean refresh)
             throws JOSEException, ParseException{
         /*
         * Check the token's signature and expiration time.
@@ -165,7 +178,9 @@ public class AuthService {
         * */
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
         SignedJWT signedJWT = SignedJWT.parse(token);
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+        Date expirationTime = refresh
+                ? new Date (signedJWT.getJWTClaimsSet().getIssueTime().toInstant().plus(REFRESH_DURATION, ChronoUnit.SECONDS).toEpochMilli())
+                : signedJWT.getJWTClaimsSet().getExpirationTime();
         if (!(signedJWT.verify(verifier) && expirationTime.after(new Date()))){
             throw new AppException(ErrorCode.UNAUTHENTICATED_ACCESS);
         }
